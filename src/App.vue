@@ -1,72 +1,52 @@
 <script setup>
+  import ScreenTask from './components/ScreenTask.vue'
   import { STATUS, PRIORITY, LIST } from './defaultSettings'
   import { computed, ref } from 'vue'
+  import { 
+    deleteTask, 
+    addTask, 
+    changeStatusTask, 
+    filterPriorityListTask 
+  } from './control'
+
   const task = ref('');
   const listTasks = ref(LIST);
   const hideCompleted = ref(false)
 
-  const listHighTask = computed(() => {
-    if (!hideCompleted.value) {
-      return listTasks.value.filter(task => task.priority === PRIORITY.HIGH)
-    }
-
-    return listTasks.value.filter(task => {
-      if (task.priority === PRIORITY.HIGH && task.status !== STATUS.DONE) {
-        return task
-      }
-    })
-  });
-
-  let listLowTask = computed(() => {
-    if (!hideCompleted.value) {
-      return listTasks.value.filter(task => task.priority === PRIORITY.LOW)
-    }
-
-    return listTasks.value.filter(task => {
-      if (task.priority === PRIORITY.LOW && task.status !== STATUS.DONE) {
-        return task
-      }
-    })
-  });
-
-  function deleteTask(id) {
-    listTasks.value = listTasks.value.filter(task => task.id !== id)
-  }
-
-  function addTask(task) {
-    listTasks.value = [...listTasks.value, task]
-  }
-
-  function changeTask(id) {
-    listTasks.value = [...listTasks.value].map(task => {
-      if (task.id ===  id) {
-        task.status = !task.status;
-        return task;
-      }
-
-      return task;
-    })
-  }
+  const listHighTask = computed(() => 
+    filterPriorityListTask(hideCompleted.value, PRIORITY.HIGH, listTasks.value));
+  const listLowTask = computed(() => 
+    filterPriorityListTask(hideCompleted.value, PRIORITY.LOW, listTasks.value));
 
   function buttonTogleClickHandler() {
     hideCompleted.value = !hideCompleted.value
-    console.log(listHighTask.value)
+  }
+
+  function buttonDeleteClickHandler(id) {
+    listTasks.value = deleteTask(id, listTasks.value)
+  }
+
+  function checkboxClickHandler(id) {
+    listTasks.value = changeStatusTask(id, listTasks.value)
   }
 
   function formSubmitHandler(e) {
     e.preventDefault()
+    //проверка на пустотую строки
     if (!task.value.trim()) {
       return;
     }
 
-    addTask({
+    listTasks.value = addTask({
       id: Date.now(), 
       text: task.value, 
       priority: e.target.priority.value, 
       status: STATUS.IN_PROGRESS
-    })
+    }, listTasks.value)
+
     task.value = ''
   }
+
 
 
 </script>
@@ -83,38 +63,23 @@
     </form>
 
     <div>
-      <div>Задачи с высоким приоритетом</div>
-      <ul v-for="task in listHighTask" :key="task.id">
-        <li :class="{ done: task.status }">
-          <input 
-            type="checkbox" 
-            :checked="task.status" 
-            @click="changeTask(task.id)"
-          />
-          {{ task.text }} 
-          <button v-on:click="deleteTask(task.id)" type="button">-</button>
-        </li>
-      </ul>
-
-      <hr/>
-
-      <div>Задачи с низким приориетом</div>
-      <ul v-for="task in listLowTask" :key="task.id">
-        <li :class="{ done: task.status}">
-          <input 
-            type="checkbox" 
-            :checked="task.status" 
-            @click="changeTask(task.id)"
-          />
-          {{ task.text }} 
-          <button @click="deleteTask(task.id)" type="button">-</button>
-        </li>
-      </ul>
-
+      <ScreenTask 
+        title="Задачи с высоким приоритетом"
+        :listTask="listHighTask"
+        :delete="buttonDeleteClickHandler"
+        :togleCheckbox="checkboxClickHandler"
+      />
+      <hr/> 
+      <ScreenTask 
+        title="Задачи с низким приоритетом"
+        :listTask="listLowTask"
+        :delete="buttonDeleteClickHandler"
+        :togleCheckbox="checkboxClickHandler"
+      />
       <hr/>
       <div>
         Скрыть завершенные
-        <button v-on:click="buttonTogleClickHandler">
+        <button @:click="buttonTogleClickHandler">
           {{ hideCompleted ? 'показать' : 'скрыть' }}
         </button>
       </div>
@@ -122,12 +87,4 @@
   </div>
 </template>
 
-<style scoped>
-  ul {
-    list-style-type: none;
-  }
 
-  .done {
-    text-decoration: line-through;
-  }
-</style>
